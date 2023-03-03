@@ -11,7 +11,8 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 public class Server {
-    protected final int port = 9999;
+//    TODO все хендлеры должны храниться в полях Server
+protected final int port = 9999;
     protected final String folderName = "public";
 
     void start() {
