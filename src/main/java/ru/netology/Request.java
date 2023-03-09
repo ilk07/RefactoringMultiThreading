@@ -1,11 +1,18 @@
 package ru.netology;
 
+import org.apache.http.NameValuePair;
+import org.apache.http.client.utils.URLEncodedUtils;
+
+import java.net.URI;
+import java.net.URISyntaxException;
+import java.nio.charset.StandardCharsets;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 public class Request {
-    private final String message;
 
     private final String httpVersion;
     private final String url;
@@ -25,9 +32,11 @@ public class Request {
         return body;
     }
 
-    public Request(String message, String delimiter, String lineDelimiter, String headerDelimiter) {
+    public String getHttpVersion() {
+        return httpVersion;
+    }
 
-        this.message = message;
+    public Request(String message, String delimiter, String lineDelimiter, String headerDelimiter) {
 
         String[] parts = message.split(delimiter);
         String head = parts[0];
@@ -51,6 +60,50 @@ public class Request {
             this.body = parts[1].trim();
         } else {
             this.body = "";
+        }
+    }
+
+    public String getPathFromUrl() {
+        return url.split("\\?")[0];
+    }
+
+    public NameValuePair getQueryParam(String name) throws URISyntaxException {
+        return getQueryParams().stream().filter(paar -> paar.getName().equalsIgnoreCase(name)).findFirst().orElse(new NameValuePair() {
+            @Override
+            public String getName() {
+                return null;
+            }
+
+            @Override
+            public String getValue() {
+                return null;
+            }
+        });
+    }
+
+    public List<NameValuePair> getQueryParams() throws URISyntaxException {
+        return URLEncodedUtils.parse(new URI(url), StandardCharsets.UTF_8);
+    }
+
+    public String getHeaderContent() {
+        if (this.headers.containsKey("Content-Type")) {
+            return this.headers.get("Content-Type");
+        }
+
+        return null;
+    }
+
+    public List<NameValuePair> getPostParams() {
+        return URLEncodedUtils.parse(body, StandardCharsets.UTF_8);
+    }
+
+    public List<NameValuePair> getPostParam(String name) {
+        return getPostParams().stream().filter(param -> param.getName().equalsIgnoreCase(name)).collect(Collectors.toList());
+    }
+
+    public void printParams(List<NameValuePair> list) {
+        for (NameValuePair item : list) {
+            System.out.println(item.getName() + " : " + item.getValue());
         }
     }
 
