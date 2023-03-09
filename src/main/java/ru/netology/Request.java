@@ -10,6 +10,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 public class Request {
 
@@ -62,7 +63,6 @@ public class Request {
         }
     }
 
-
     public String getPathFromUrl() {
         return url.split("\\?")[0];
     }
@@ -83,6 +83,28 @@ public class Request {
 
     public List<NameValuePair> getQueryParams() throws URISyntaxException {
         return URLEncodedUtils.parse(new URI(url), StandardCharsets.UTF_8);
+    }
+
+    public String getHeaderContent() {
+        if (this.headers.containsKey("Content-Type")) {
+            return this.headers.get("Content-Type");
+        }
+
+        return null;
+    }
+
+    public List<NameValuePair> getPostParams() {
+        return URLEncodedUtils.parse(body, StandardCharsets.UTF_8);
+    }
+
+    public List<NameValuePair> getPostParam(String name) {
+        return getPostParams().stream().filter(param -> param.getName().equalsIgnoreCase(name)).collect(Collectors.toList());
+    }
+
+    public void printParams(List<NameValuePair> list) {
+        for (NameValuePair item : list) {
+            System.out.println(item.getName() + " : " + item.getValue());
+        }
     }
 
     @Override
