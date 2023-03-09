@@ -1,5 +1,4 @@
 package ru.netology;
-
 import java.io.*;
 import java.net.ServerSocket;
 import java.net.Socket;
@@ -10,6 +9,7 @@ import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+
 
 public class Server {
     private final String DELIMITER = "\r\n\r\n";
@@ -38,6 +38,7 @@ public class Server {
 
             if (parts.length != 3) {
                 // just close socket
+                wrongRequestResponse(400, out);
                 socket.close();
             }
 
@@ -82,16 +83,14 @@ public class Server {
                 }
             }
 
-            Request request = new Request(sb.toString(), DELIMITER, LINE_DELIMITER, HEADER_DELIMITER);
-
             //метод не представлен
-            if (!methodIsAvailable(request.getMethod())) {
+            if (!methodIsAvailable(currentMethod)) {
 
                 final var filePath = Path.of(".", "public", "error501.html");
                 final var notImplementedTemplate = Files.readString(filePath);
                 final var notImplementedContent = notImplementedTemplate.replace(
                         "{method}",
-                        request.getMethod().toString()
+                        currentMethod.toString()
                 );
 
                 final var length = notImplementedContent.length();
@@ -102,8 +101,12 @@ public class Server {
                 socket.close();
 
             } else {
-                if (handlerIsAvailable(request.getMethod(), request.getUrl())) {
-                    handlers.get(request.getMethod()).get(request.getUrl()).handle(request, out);
+
+                //create Request object
+                Request request = new Request(sb.toString(), DELIMITER, LINE_DELIMITER, HEADER_DELIMITER);
+
+                if (handlerIsAvailable(request.getMethod(), request.getPathFromUrl())) {
+                    handlers.get(request.getMethod()).get(request.getPathFromUrl()).handle(request, out);
                     socket.close();
                 } else {
                     //not found!
@@ -150,7 +153,7 @@ public class Server {
 
     public String createResponseHeaders(int statusCode, String contentType, long length) {
 
-        String sb = HTTP_VERSION +
+        return HTTP_VERSION +
                 " " +
                 statusCode +
                 " " +
@@ -164,8 +167,6 @@ public class Server {
                 LINE_DELIMITER +
                 "Connection: close" + LINE_DELIMITER +
                 LINE_DELIMITER;
-
-        return sb;
     }
 
     void wrongRequestResponse(int code, BufferedOutputStream out) throws IOException {
@@ -173,9 +174,9 @@ public class Server {
         out.flush();
     }
 
-    public boolean handlerIsAvailable(HttpMethod method, String message) {
+    public boolean handlerIsAvailable(HttpMethod method, String url) {
         if (handlers.containsKey(method)) {
-            return handlers.get(method).containsKey(message);
+            return handlers.get(method).containsKey(url);
         }
         return false;
     }
@@ -198,8 +199,27 @@ public class Server {
         final var sourceFolder = Path.of(".", SOURCE_FOLDER);
         File dir = new File(String.valueOf(sourceFolder)); //папка проекта
         if (dir.isDirectory()) {
+            addHandler(HttpMethod.POST, "/postform.html", (request, responseStream) -> {
+                try {
+                    final var filePath = Path.of(".", SOURCE_FOLDER, "postform.html");
+                    final var mimeType = Files.probeContentType(filePath);
+                    final var length = Files.size(filePath);
+
+                    responseStream.write(
+                            createResponseHeaders(200, mimeType, length).getBytes()
+                    );
+                    Files.copy(filePath, responseStream);
+                    responseStream.flush();
+
+
+                } catch (IOException e) {
+                    throw new RuntimeException(e);
+                }
+            });
             for (File item : Objects.requireNonNull(dir.listFiles())) {
                 if (!item.isDirectory()) {
+
+
                     addHandler(HttpMethod.GET, "/" + item.getName(), (request, responseStream) -> {
                         try {
                             final var filePath = Path.of(".", SOURCE_FOLDER, item.getName());
@@ -292,4 +312,5 @@ public class Server {
         responseCodes.put(510, "Not Extended");
         responseCodes.put(511, "Network Authentication Required");
     }
+
 }
